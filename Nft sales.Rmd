@@ -1,0 +1,767 @@
+---
+title: 'Minería de datos: PRA2 - Proyecto de minería de datos'
+author: "Autor: Frank Cespedes Ruiz"
+date: "Mayo 2022"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+    includes:
+      in_header: 75.584-PEC-header.html
+  word_document: default
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+******
+# Enunciado
+******
+
+Como continuación del estudio iniciado en la Práctica 1, procedemos en **aplicar modelos analíticos** sobre el juego de datos seleccionado y preparado.  En esta **Práctica 2** se aconseja de adjuntar los “chunks” de la parte de preparación previa, ejemplo (limpieza, discretización, normalización, PCA/SVD etc.), o en su defecto, cargar solo los datos previamente preparados.
+
+
+***(Punto común para todos los ejercicios)**
+
+En todos los puntos sucesivos se pide al estudiante, además de aplicar los diferentes métodos, de analizar correctamente el problema, **detallar de manera exhaustiva** resaltando el por qué y cómo se ha realizado, incluyendo elementos visuales, explicando los resultados, realizar las comparativas oportunas con sus conclusiones.
+
+
+Para todas las PRA es **necesario documentar** en cada apartado del ejercicio práctico que se ha hecho, por qué se ha hecho y cómo se ha hecho. Asimismo, todas las decisiones y conclusiones deberán ser presentados de forma razonada y clara, **contextualizando los resultados**, es decir, especificando todos y cada uno de los pasos que se hayan llevado a cabo para su resolución. 
+
+**NOTA**: *En esta actividad vamos a usar al mismo dataset un método no supervisado y supervisado*.
+
+De este modo se pide al estudiante que complete los siguientes pasos:
+
+1. Aplicar un modelo **no supervisado** y basado en el concepto de distancia, sobre el juego de datos.
+
+2. Aplicar de nuevo el modelo anterior, pero usando una **métrica de distancia diferente** y comparar los resultados.
+
+3. Se aplican lo algoritmos **DBSCAN y OPTICS**, se prueban con diferentes valores de eps y se comparan los resultados con los métodos anteriores.
+
+4. Aplicar un modelo de generación de reglas a partir de **árboles de decisión** ajustando las diferentes opciones de creación como sin y con opciones de poda o boosting y comparar los resultados.
+
+5. Aplicar un **modelo supervisado** diferente al anterior a elegir de los vistos en el material docente.Comparar el resultado con el modelo generado anterior.
+	
+6. Identificar eventuales **limitaciones** del dataset seleccionado y **analizar los riesgos** para el caso de uso.
+
+
+******
+# Criterios de evaluación
+******
+
+* Ejercicio 1 - 25%
+	- Se genera un modelo no supervisado.
+	- Se analizan, muestran y comentan las medidas de calidad del modelo generado.
+	- Se comentan las conclusiones.
+
+* Ejercicio 2 - 10%
+	- Se genera de nuevo el modelo no supervisado anterior, pero usando una métrica de distancia distinta.
+	- Se muestran y comentan las medidas de calidad del modelo generado.
+	- Adicionalmente se comparan los dos modelos no supervisados con métricas de distancia distintas.
+	- Se comentan las conclusiones. 
+	
+* Ejercicio 3 - 10%
+	- Se aplican lo algoritmos DBSCAN y OPTICS de forma correcta.
+  - Se prueban, describen e interpretan los resultados con diferentes valores de eps.
+  - Se obtiene una medida de lo bueno que es el agrupamiento.
+  - Se comparan los resultados obtenidos de los modelos anteriores y DBSCAN.
+  - Se comentan las conclusiones. 
+
+* Ejercicio 4 - 25%
+	- Se generan reglas y se comentan e interpretan las más significativas.
+	- Extraemos las reglas del modelo en formato texto y gráfico.
+	- Adicionalmente se genera matriz de confusión para medir la capacidad predictiva del algoritmo.
+	- Se comparan e interpretan los resultados (sin y con opciones de poda o boosting), explicando las ventajas e inconvenientes del modelo generado respecto a otro método de construcción.
+	- Se evalúa la tasa de error en cada nivel de árbol, la eficiencia en clasificación (en las fases de training, validación y test) y la comprensibilidad.
+	- Se comentan las conclusiones.
+
+* Ejercicio 5 - 10%
+	- Prueba con una variación u otro enfoque algorítmico. 
+	- Se detalla, comenta y evalúa la calidad de clasificación.
+	- Se comparan y comentan los resultados de manera exhaustiva con el anterior método de construcción.
+
+* Ejercicio 6 - 10%
+  - Identifica qué posibles limitaciones tienen los datos que has seleccionado para obtener conclusiones con los modelos (supervisado y no supervisado)
+  - Se identifican posibles riesgos del uso del modelo  (mínimo 300 palabras).
+  
+* Consideración general - 10%
+  - Se presenta el código y es fácilmente reproducible.
+  - Se detalla cada pregunta de manera correcta, mostrando el código, comentando como se ha hecho y porque se ha hecho, comparando los resultados y/o indicando otras alternativas al problema indicado.
+  - Se muestran las conclusiones en cada apartado
+  - Se indican eventuales citaciones bibliográficas, fuentes internas/externas y materiales de investigación.
+
+******
+# Recursos de programación
+******
+* Incluimos en este apartado una lista de recursos de programación para minería de datos donde podréis encontrar ejemplos, ideas e inspiración:
+
+  + [Material adicional del libro: Minería de datos Modelos y Algoritmos](http://oer.uoc.edu/libroMD/)
+  + [Espacio de recursos UOC para ciencia de datos](http://@datascience.recursos.uoc.edu/es/)
+  + [Buscador de código R](https://rseek.org/)  
+  + [Colección de cheatsheets en R](https://rstudio.com/resources/cheatsheets/)  
+  
+  
+******
+# Formato y fecha de entrega
+******
+
+El formato de entrega es: **username_estudiante-PRA2** *.Rmd* y el **output generado** en uno de estos formatos *html/doc/docx/odt/pdf*.
+
+
+Se debe entregar la PRA en el buzón de entregas del aula en formato comprimido que incluye los ficheros:
+- ejecutable
+- output
+- el dataset seleccionado o en su defecto indicar la ruta para su descarga en el ejecutable.  
+
+******
+# Nota: Propiedad intelectual 
+******
+
+> A menudo es inevitable, al producir una obra multimedia, hacer uso de recursos creados por terceras personas. Es por lo tanto comprensible hacerlo en el marco de una práctica de los estudios de Informática, Multimedia y Telecomunicación de la UOC, siempre y cuando esto se documente claramente y no suponga plagio en la práctica. 
+
+> Por lo tanto, al presentar una práctica que haga uso de recursos ajenos, se debe presentar junto con ella un documento en que se detallen todos ellos, especificando el nombre de cada recurso, su autor, el lugar donde se obtuvo y su estatus legal: si la obra esta protegida por el copyright o se acoge a alguna otra licencia de uso (Creative Commons, licencia GNU, GPL ...). 
+El estudiante deberá asegurarse de que la licencia no impide específicamente su uso en el marco de la práctica. En caso de no encontrar la información correspondiente tendrá que asumir que la obra esta protegida por copyright. 
+
+> Deberéis, además, adjuntar los ficheros originales cuando las obras utilizadas sean digitales, y su código fuente si corresponde.
+
+
+******
+
+# SOLUCIÓN
+
+Lo primero es cargar el archivo Rdata que contiene todo el dataset de la practica 1 comprimido.
+
+```{r}
+load("objects.RData")
+```
+
+Como ya no encargamos de hacer toda la preparacion de los datos ahora simplemente nos dedicaremos de implementar los distintos modelos para ver si nuestros objetivos planteados en primera instancia pueden lograrse.
+
+## Ejercicio 1
+
+### Se genera un modelo no supervisado.
+
+### Se analizan, muestran y comentan las medidas de calidad del modelo generado.
+
+### Se comentan las conclusiones.
+
+Primero de todo, mostrare la cabezera de los principales conjuntos de datos que se crearon para el entrenamiento para asi poder refrescar un poco la memoria del proposito de cada uno de ellos.
+
+```{r}
+headNFTCollection
+```
+
+```{r}
+str(summaryNFTCollection)
+```
+
+```{r}
+str(result)
+```
+
+```{r}
+str(testCollections.csv)
+```
+
+Para empezar trabajaremos con modelos no supervisados para asi descubrir si a traves de distintos atributos que definen una coleccion NFT se puede deducir a que categoria pertenece.
+
+Para ello, incorporaremos al resumen de colecciones NFT generado en la practica anterior los atributos:
+totalItems: Donde se define que existe un numero limite de objetos disponibles a la venta.
+watchlistCount: Donde se nos muestra el numero de NFT distintos vendidos en la actualidad.
+
+```{r}
+testing <- collections.csv[order(collections.csv$symbol),]
+summaryNFTCollection$total_transactions <- TRANSACTION_NFTCOLLECTION
+testSummaryNFTCollection <- summaryNFTCollection[,c(9,10)]
+testSummaryNFTCollection$totalItems <- testing$totalItems
+testSummaryNFTCollection$watchlistCount <- testing$watchlistCount
+testSummaryNFTCollection[is.na(testSummaryNFTCollection)] = 0
+
+str(testSummaryNFTCollection)
+```
+
+Ahora generearemos un modelo de pruebas para asi no eliminar columnas o valores del fichero original.
+
+Para empezar, queremos averiguar si existe la posibilidad de averiguar a que categoria pertenece una coleccion NFT a traves del margen de ganancias, su numero de transacciones, el numero total de objetos y la lista que facilita el numero de NFT's vendidos.
+
+A continuación aplicaremos el algoritmo kmeans con 2,3,4 y 8 clusters.
+
+```{r}
+x <- testSummaryNFTCollection
+fit2       <- kmeans(x, 2)
+y_cluster2 <- fit2$cluster
+
+fit3       <- kmeans(x, 3)
+y_cluster3 <- fit3$cluster
+
+fit4       <- kmeans(x, 4)
+y_cluster4 <- fit4$cluster
+
+fit8       <- kmeans(x, 8)
+y_cluster8 <- fit8$cluster
+```
+
+```{r}
+library(cluster)
+d  <- daisy(x) 
+sk2 <- silhouette(y_cluster2, d)
+sk3 <- silhouette(y_cluster3, d)
+sk4 <- silhouette(y_cluster4, d)
+sk8 <- silhouette(y_cluster8, d)
+mean(sk2[,3])
+mean(sk3[,3])
+mean(sk4[,3])
+mean(sk8[,3])
+```
+
+Primero mostraremos para el modelo de agrupamiento mas optimo, es decir, para el caso de 3 clusters.
+
+```{r}
+clusplot(x, fit3$cluster, color=TRUE, lines=0)
+```
+
+Sin embargo, nuestro objetivo es averiguar a que categoría pertenecen los siguientes clusters gracias a los atributos comentados anteriormente.
+
+A pesar de que existen 23 combinaciones distintas sobre tipos de categorías de colecciones NFT's existentes, existen solo 8 categorías predefinidas y las restantes son combinaciones de ellas y, por lo tanto, no nos interesan.
+
+Así que generaremos nuestro modelo para el caso de 8 clusters.
+
+```{r}
+clusplot(x, fit8$cluster, color=TRUE, lines = 0)
+```
+
+Estas son las agrupaciones que nos genera nuestro modelo kmeans.
+
+```{r}
+clusplot(x, fit8$cluster, color=TRUE, shade=FALSE, labels=13, lines=5)
+```
+
+Con los resultados obtenidos no se pueden sacar conclusiones ya que los clusters se superponen y el conjunto de datos genera ruido.
+
+***
+
+## Ejercicio 2
+
+### Se genera de nuevo el modelo no supervisado anterior, pero usando una métrica de distancia distinta.
+
+### Se muestran y comentan las medidas de calidad del modelo generado.
+
+### Adicionalmente se comparan los dos modelos no supervisados con métricas de distancia distintas.
+
+### Se comentan las conclusiones. 
+	
+Ahora haremos una comprobacion de la cantidad optima de cluster para lo cual utilizaremos el algoritmo PAM junto con el metodo de la silueta basandonos en la distancia eucladiana.
+
+La funcion silhouettte devuelve para cada muestra, el cluster donde ha sido asignado, el cluster vecino y el valor de la silueta. Por lo tanto, calcula la mediana de la tercera columna para obtener una estimacion de la calidad del agrupamiento.
+
+```{r}
+start_time <- Sys.time()
+x <- testSummaryNFTCollection
+#install.packages("factoextra")
+library(factoextra)
+fviz_nbclust(x = x, FUNcluster = pam, method = "silhouette", k.max = 15,
+             diss = dist(x, method = "euclidean"))
+```
+```{r}
+end_time <- Sys.time()
+end_time - start_time
+```
+
+Por otro lado, utlilizaremos el mismo algoritmo pero con el metodo WSS.
+
+```{r}
+start_time <- Sys.time()
+fviz_nbclust(x = x, FUNcluster = pam, method = "wss", k.max = 15,
+             diss = dist(x, method = "euclidean"))
+```
+
+```{r}
+end_time <- Sys.time()
+end_time - start_time
+```
+
+Incluso podemos probarlo con el algoritmo CLARA, el metodo de la silueta y basandonos en la distancia manhattan.
+
+```{r}
+start_time <- Sys.time()
+fviz_nbclust(x = x, FUNcluster = cluster::clara, method = "silhouette", k.max = 15,
+             diss = dist(x, method = "manhattan"))
+```
+
+```{r}
+end_time <- Sys.time()
+end_time - start_time
+```
+
+Con estos tres algoritmos distintos observamos que no se arroja o genera un respuesta satisfactoria (2 cluster). Nuestro proposito es reconocer la categoria a la que pertenece una coleccion NFT a traves de sus atributos y, por lo tanto, el resultado mas optimo para nuestro caso de uso serian 8 clusters por las 8 categorias de coleccion existentes.
+
+A partir de este punto, probaremos a realizar conjuntos con una k con valor 2, 4 y 8 y visualizaremos los conjuntos:
+
+```{r}
+pam_res3 = pam(x, 3)
+pam_res4 = pam(x, 4)
+pam_res8 = pam(x, 8)
+
+plot(x, col=pam_res3$cluster)
+```
+
+```{r}
+plot(x, col=pam_res4$cluster)
+```
+
+```{r}
+plot(x, col=pam_res8$cluster)
+```
+
+Como podemos observar por los graficos existen relaciones entre atributos en los que debido a la cantidad de información y la diferencia tan dispar de valores no se consiguen formar clusters de una forma clara y definida. Por otro lado, si que parece observarse que con las parejas de atributos [total_transactions y totalItems] o [total_transactions y watchlistCount] al disponer de valores mas parejos se puede observar mas claramente la diferenciacion de clusters.
+
+```{r}
+fit8  <- kmeans(x[, 2:3], 8)
+y_cluster8 <- fit8$cluster
+
+# 8 clústers
+clusplot(x[,2:3], fit8$cluster, color = TRUE, shade = TRUE, labels = 1, lines = 0)
+```
+
+
+
+Con las relaciones comentadas anteriormente, se observan agrupaciones de una forma mas clara. Sin embargo, dificilmente se puede definir a que categoria pueden pertenecer y el porcentaje correcto de asignacion de valores a su categoria.
+
+*** 
+
+## Ejercicio 3
+
+### Se aplican lo algoritmos DBSCAN y OPTICS de forma correcta.
+
+### Se prueban, describen e interpretan los resultados con diferentes valores de eps.
+
+### Se obtiene una medida de lo bueno que es el agrupamiento.
+
+### Se comparan los resultados obtenidos de los modelos anteriores y DBSCAN.
+
+### Se comentan las conclusiones. 
+
+El objetivo es definir clusters definidos a traves de un conjunto maximo de puntos densamentes conectados estableciendo que el conjunto de atributos comentados definen el tipo de categoria a la que corresponde la coleccion NFT.
+
+Por lo tanto, seguiremos trabajando con el conjunto de datos preparado anteriormente.
+
+Mostramos la cabezera del conjunto.
+
+```{r}
+head(testSummaryNFTCollection, 10)
+```
+
+
+
+En este caso trabajaremos con los algoritmos DBSCAN y OPTICS ya que nos permiten la generacion de grupos no radiales a diferencia de k-means.
+
+```{r}
+testSummaryNFTCollection$categorie <- as.integer(as.factor(testing$categorie))
+
+head(testSummaryNFTCollection, 10)
+```
+
+```{r}
+library(Amelia)
+missmap(testSummaryNFTCollection, y.at = F, y.labels = F)
+```
+
+```{r}
+round(table(is.na(testSummaryNFTCollection))[2]/sum(table(is.na(testSummaryNFTCollection)))*100,2)
+```
+
+Observamos gracias a Amelia que no hace falta descartar variables ya que la totalidad de los valores que incluyen son validos para el calculo.
+
+A partir de aqui empezaremos a utilizar el agrupamiento DBScan
+
+
+Empezaremos a construir nuestro propio juego de datos teniendo tres posibles escenarios en cuenta.
+1r escenario: Utilizar los atributos testSummaryNFTCollection[pricetotal, total_transactions, totalItems, watchlistCount]
+2n escenario: Utilizar los atributos testSummaryNFTCollection[total_transactions, totalItems]
+3r escenario: Utilizar los atributos testSummaryNFTCollection[total_transactions, watchlistCount]
+
+El 2n y 3r escenario los plantearemos por las conclusiones generadas en los ejercicios anteriores.
+
+```{r}
+db1 = dbscan::dbscan(testSummaryNFTCollection,eps=0.15,minPts = 12)
+db2 = dbscan::dbscan(testSummaryNFTCollection[, c(2,3)],eps=0.15,minPts = 12)
+db3 = dbscan::dbscan(testSummaryNFTCollection[, c(2,4)],eps=0.15,minPts = 12)
+db1
+db2
+db3
+```
+
+```{r}
+factoextra::fviz_cluster(db1,testSummaryNFTCollection,stand = F,ellipse = T,geom = "point")
+```
+
+```{r}
+factoextra::fviz_cluster(db2,testSummaryNFTCollection[, c(2,3)],stand = F,ellipse = T,geom = "point")
+```
+
+```{r}
+factoextra::fviz_cluster(db3,testSummaryNFTCollection[, c(2,4)],stand = F,ellipse = T,geom = "point")
+```
+
+El problema que surge en este punto es que DBSCAN no detecta clusters que permitan agrupar la informacion ingresada en las distintas categorias de colecciones NFT's existentes.
+
+Ahora utilizaremos OPTICS para ver como trabaja con nuestro conjunto de datos
+
+Una de las primeras actividades que realizaremos con el algoritmo es ordenar las observaciones de forma que los puntos mas cercanos se conviertan en vecinos en el ordenamiento.
+
+```{r}
+library(dbscan)
+res <- optics(testSummaryNFTCollection[,1:4], minPts = 8)
+res
+```
+
+Ahora generaremos un diagrama de alcanzabilidad para poder observar cuanto de denso es el cluster y los puntos considerados outliers.
+
+```{r}
+plot(res)
+```
+
+Con el conjunto de datos que trabajamos no conseguimos generar con estos dos algoritmos ningun tipo de asociacion.
+
+***
+
+## Ejercicio 4
+
+
+Para generar todas las reglas de asociacion y los arboles observaremos primero si existe una correlacion clara entre alguna de las variables que analizaremos.
+
+```{r}
+testing <- collections.csv[order(collections.csv$symbol),]
+
+summaryNFTCollection$total_transactions <- TRANSACTION_NFTCOLLECTION
+testSummaryNFTCollection <- summaryNFTCollection[,c(9,10)]
+testSummaryNFTCollection$totalItems <- testing$totalItems
+testSummaryNFTCollection$watchlistCount <- testing$watchlistCount
+testSummaryNFTCollection[is.na(testSummaryNFTCollection)] = 0
+testSummaryNFTCollection$categorie <- collections.csv$categories
+
+testSummaryNFTCollection$categorie <- as.integer(as.factor(testing$categorie))
+```
+
+
+```{r}
+corr_tstNFTC <- testSummaryNFTCollection[,!sapply(testSummaryNFTCollection,is.factor)]
+corr <- round(cor(corr_tstNFTC, method="spearman"),2)
+corrplot::corrplot.mixed(corr)
+```
+
+Observamos que la relacion mas clara parece existir entre el precio total y el total de transacciones, esto significa que conforme aumenta el total de transacciones el valor de ingresos totales tambien lo hace. Por otro lado, las colecciones que generan una lista para observar la cuenta de colecciones vendidas acostumbran a tener un volumen mas elevado de ventas.
+
+Las correlaciones generadas entre categorias no nos interesan de momento.
+
+Ahora generaremos tres muestras, dos de entrenamiento de las cuales una de ellas se factorizara y otra de testeo.
+
+```{r}
+prueba_Result <- testSummaryNFTCollection
+
+set.seed(1)
+indexes = sample(1:nrow(prueba_Result), size = floor((2/3) * nrow(prueba_Result))) 
+
+trainX <- prueba_Result[indexes,]
+trainY <- prueba_Result[indexes,]
+test <- prueba_Result[-indexes,]
+```
+
+Empezaremos trabajando con un modelo de arbol de clasificacion simple, podemos comenzar con trials ya que nos habilita un procedimiento de impulso.
+
+Con tres iteraciones de boosting queda tal que asi:
+
+```{r}
+trainY$pricetotal <- as.factor(trainY$pricetotal)
+
+str(trainY)
+```
+
+
+```{r}
+library(C50)
+model_boost <- C5.0(x = trainX, y = trainY$pricetotal, trials = 8)
+model_boost
+```
+
+```{r}
+summary(model_boost)
+```
+
+```{r}
+plot(model_boost)
+```
+
+C5.0 puede crear un modelo de arbol inicial y luego descomponer la estructura de arbol en un conjunto de reglas mutuamente excluyentes. Luego, estas reglas se pueden recortar y modificar en un conjunto mas pequeño de reglas potencialmente superpuestas.
+
+```{r}
+library(C50)
+model <- C50::C5.0(trainX, trainY$pricetotal, rules = TRUE)
+summary(model)
+```
+
+Una vez tenemos el modelo, podemos comprobar su calidad prediciendo la clase para los datos de prueba que nos hemos reservado al principio.
+
+```{r}
+test$pricetotal <- cut(test$pricetotal, breaks = c(0,10000, 100000, 300000, Inf ),
+                         labels = c("bajo", "medio", "alto", "muy alto"))
+```
+
+```{r}
+str(test)
+```
+
+
+
+### Se generan reglas y se comentan e interpretan las más significativas.
+
+### Extraemos las reglas del modelo en formato texto y gráfico.
+
+### Adicionalmente se genera matriz de confusión para medir la capacidad predictiva del algoritmo.
+
+### Se comparan e interpretan los resultados (sin y con opciones de poda o boosting), explicando las ventajas e inconvenientes del modelo generado respecto a otro método de construcción.
+
+### Se evalúa la tasa de error en cada nivel de árbol, la eficiencia en clasificación (en las fases de training, validación y test) y la comprensibilidad.
+
+### Se comentan las conclusiones.
+
+*** 
+
+## Ejercicio 5
+
+### Prueba con una variación u otro enfoque algorítmico. 
+
+### Se detalla, comenta y evalúa la calidad de clasificación.
+
+### Se comparan y comentan los resultados de manera exhaustiva con el anterior método de construcción.
+
+Hemos observado que el conjunto de modelos generados no nos proporcionan ningun tipo de informacion util para nuestro objetivo asi que generaremos otro arbol basados en el siguiente concepto.
+
+        10000€
+      /   |  \
+     <    |    >
+     |    |     |
+game 10%  |    art (20%)
+pfps 70%  |    pfps (5%)
+          |
+        art 80%   
+
+Lo que se pretende obtener es un desglosado de precio, totalItems hasta obtener el tipo de categoria que puede ser.
+
+```{r}
+testSummaryNFTCollection$categorie <- NULL
+```
+
+```{r}
+testSummaryNFTCollection$art <- summaryNFTCollection$art
+testSummaryNFTCollection$games <- summaryNFTCollection$games
+testSummaryNFTCollection$pfps <- summaryNFTCollection$pfps
+testSummaryNFTCollection$sports <- summaryNFTCollection$sports
+testSummaryNFTCollection$virtual_worlds <- summaryNFTCollection$virtual_worlds
+testSummaryNFTCollection$none <- summaryNFTCollection$none
+testSummaryNFTCollection$launchpad <- summaryNFTCollection$launchpad
+testSummaryNFTCollection$photography <- summaryNFTCollection$photography
+```
+
+```{r}
+prueba_Result <- testSummaryNFTCollection
+
+set.seed(1)
+indexes = sample(1:nrow(prueba_Result), size = floor((2/3) * nrow(prueba_Result))) 
+
+trainX <- prueba_Result[indexes,]
+trainY <- prueba_Result[indexes,]
+test <- prueba_Result[-indexes,]
+```
+
+Empezaremos trabajando con un modelo de arbol de clasificacion simple, podemos comenzar con trials ya que nos habilita un procedimiento de impulso.
+
+Con tres iteraciones de boosting queda tal que asi:
+
+```{r}
+trainY$pricetotal <- as.factor(trainY$pricetotal)
+
+str(trainY)
+```
+
+```{r}
+library(stringr)
+trainY$art <- as.character(str_replace(trainY$art, "0", "n"))
+trainY$art <- as.character(str_replace(trainY$art, "1", "art"))
+trainY$games <- as.character(str_replace(trainY$games, "0", "n"))
+trainY$games <- as.character(str_replace(trainY$games, "1", "games"))
+trainY$pfps <- as.character(str_replace(trainY$pfps, "0", "n"))
+trainY$pfps <- as.character(str_replace(trainY$pfps, "1", "pfps"))
+trainY$sports <- as.character(str_replace(trainY$sports, "0", "n"))
+trainY$sports <- as.character(str_replace(trainY$sports, "1", "sports"))
+trainY$virtual_worlds <- as.character(str_replace(trainY$virtual_worlds, "0", "n"))
+trainY$virtual_worlds <- as.character(str_replace(trainY$virtual_worlds, "1", "virtual_worlds"))
+trainY$none <- as.character(str_replace(trainY$none, "0", "n"))
+trainY$none <- as.character(str_replace(trainY$none, "1", "none"))
+trainY$launchpad <- as.character(str_replace(trainY$launchpad, "0", "n"))
+trainY$launchpad <- as.character(str_replace(trainY$launchpad, "1", "launchpad"))
+trainY$photography <- as.character(str_replace(trainY$photography, "0", "n"))
+trainY$photography <- as.character(str_replace(trainY$photography, "1", "photography"))
+```
+
+Te mostrare solo la cabecera, yo he generado un print(trainY) para copiar la tabla
+
+```{r}
+head(trainY,10)
+```
+
+
+```{r}
+library(rpart)
+
+dat <- read.table(text ="
+    pricetotal total_transactions totalItems watchlistCount art games pfps sports virtual_worlds none launchpad photography
+zoom.csv	1841.929	74	1	288	n	n	pfps	n	n	n	n	n
+mindfolk.csv	538	5	0	0	art	n	pfps	n	n	n	n	n
+doge_track.csv	2379.86183	219	6000	0	n	games	pfps	n	n	n	n	n
+6rings.csv	123990.8236	327	5005	0	n	n	pfps	n	n	n	n	n
+degenerate_trash_pandas.csv	74870.142664444	913	0	1018	n	n	n	n	n	n	launchpad	n
+smokeheads.csv	10627.937614799	905	4420	743	art	n	n	n	n	n	n	n
+famous_fox_federation.csv	24969.7949	288	0	1369	n	n	pfps	n	n	n	n	n
+bongheads.csv	2379.319808187	272	2420	0	art	n	pfps	n	n	n	n	n
+rarikeys.csv	1224.8659	106	2600	354	art	n	pfps	n	n	n	n	n
+lifinity_flares.csv	7843.484082	335	0	0	art	n	pfps	n	n	n	launchpad	n
+genopets_refined_genotype_crystals.csv	2497.645	102	0	68	art	n	pfps	n	n	n	n	n
+space_robots.csv	2437.238999	105	0	657	art	n	pfps	n	n	n	launchpad	n
+sea_shanties_citizens.csv	966.11799	129	6666	331	n	n	n	n	n	n	launchpad	n
+creamy_friends.csv	61506.049327483	959	5555	669	art	n	n	n	virtual_worlds	n	n	n
+tamashisoul.csv	6666.15918	295	0	752	n	n	n	n	n	n	launchpad	n
+guild_saga_heroes.csv	7418.72781589	778	9900	0	n	n	pfps	n	n	none	n	n
+nuked_apes.csv	4806.65489	94	0	751	n	n	n	n	n	n	launchpad	n
+astrals.csv	25114.086824321	350	10000	1713	art	n	pfps	n	n	n	n	n
+monkey_kingdom.csv	27796.898	210	0	0	n	n	pfps	n	n	n	n	n
+project_tenjin.csv	12959.74678793	659	7500	748	art	n	pfps	n	n	n	n	n
+the_remnants_.csv	1000.74	33	0	0	art	n	n	n	virtual_worlds	n	n	n
+desolates_metaverse.csv	93923.783219696	390	0	446	n	n	pfps	n	n	n	n	n
+solana_money_boys.csv	5206.8002	112	0	821	n	n	pfps	n	n	n	n	n
+starbots_robot.csv	3742.1856855	267	6000	0	n	games	n	n	n	n	n	n
+yaku_corp.csv	2496.1406778	201	0	410	n	games	pfps	n	n	n	n	n
+spp.csv	794.56522069	384	4444	0	n	n	n	n	virtual_worlds	n	n	n
+fellowapes.csv	3286.5803497	412	4421	892	art	n	pfps	n	n	n	n	n
+stoned_ape_crew.csv	5898.5669	45	0	807	n	n	pfps	n	n	n	n	n
+degenerate_ape_kindergarten.csv	36766.08	111	0	244	n	n	n	n	virtual_worlds	n	n	n
+sea_shanties.csv	522.544	44	0	0	art	n	pfps	n	n	n	n	n
+degens.csv	72914.788457533	737	3333	565	n	n	pfps	n	n	n	n	n
+monke_crew.csv	183.5768	102	1212	0	n	games	n	n	n	n	n	n
+taiyo_robotics.csv	2303	14	0	0	n	n	pfps	n	n	n	n	n
+fadedfoxes.csv	672.885	109	0	733	n	n	n	n	virtual_worlds	n	launchpad	n
+diamond_town.csv	1483.78559	189	0	656	n	n	n	n	n	n	launchpad	n
+cosmic_ape_crusaders.csv	10593.942687	656	0	609	n	games	pfps	n	n	n	n	n
+decimusdynamics.csv	7671.3110599	605	0	1195	n	games	pfps	n	n	n	n	n
+shadowy_super_coder_dao.csv	10523.681169697	27	0	189	art	n	n	n	virtual_worlds	n	n	n
+solsteads_surreal_estate.csv	22242.69138	191	0	139	art	n	pfps	n	n	n	n	n
+solana_monke_rejects.csv	30580.49337051	431	0	513	n	games	pfps	n	n	n	n	n
+drippies.csv	1462122.96918303	912	5555	827	art	n	n	sports	n	n	n	n
+robo_cocks.csv	793.780701997	216	0	0	n	n	pfps	n	virtual_worlds	n	n	n
+danger_valley_ducks.csv	11951.1292	559	0	0	art	n	pfps	n	n	n	n	n
+thugbirdz.csv	47636.899	221	3333	236	n	n	n	n	virtual_worlds	none	n	n
+zankoku.csv	707.67	41	1111	0	art	n	pfps	n	n	n	n	n
+the_suites.csv	24855.3609	303	0	133	art	games	n	n	n	n	n	n
+solana_hodl_whales.csv	909.918125243	167	0	0	n	n	pfps	n	n	n	n	n
+almost_famous_pandas.csv	173759.02006999	1535	8888	0	art	n	pfps	n	n	n	n	n
+cynova_legacy.csv	582.88099	156	0	0	art	n	pfps	n	n	n	n	n
+degenerate_ape_academy.csv	472597.8114144	740	10009	661	n	games	n	n	n	n	n	n
+tombstoned.csv	14549.90352532	395	0	3080	n	games	pfps	n	n	n	n	n
+888_anon_club.csv	3486.738	37	888	0	n	n	pfps	n	n	n	n	n
+female_hodl_whales.csv	439.8769	63	1500	0	n	n	pfps	n	n	n	n	n
+cets_on_creck.csv	61083.25235069	318	6969	2412	n	n	n	n	n	n	launchpad	n
+curedlabs.csv	2188.21024	215	0	312	art	n	pfps	n	n	n	n	n
+matuki.csv	1109.407345	270	0	254	art	n	n	n	virtual_worlds	n	n	n
+bohemia_.csv	9761.86107	133	0	1424	art	n	pfps	n	n	n	n	n
+quantum_traders.csv	6170.84329	327	0	551	n	n	n	n	virtual_worlds	n	n	n
+solminator.csv	3401.29824	992	1	385	art	n	pfps	n	n	n	n	n
+galactic_geckos.csv	140388.276875795	639	0	585	art	n	n	n	virtual_worlds	n	n	n
+magnum_ai.csv	4219.379486969	375	3877	719	n	n	pfps	n	n	n	n	n
+cyborg_iguanas.csv	613.27430111	227	2222	0	n	n	pfps	n	n	n	n	n
+flamez.csv	3583.304678919	622	3322	585	art	n	pfps	n	n	n	n	n
+solbouncer.csv	1116.692221	186	0	0	art	n	pfps	n	n	n	n	n
+portals.csv	27572.249	84	0	246	art	n	n	n	n	none	n	n
+defi_pirates.csv	6627.727881	460	0	565	n	n	pfps	n	n	n	n	n
+meerkat_millionaires_country_club.csv	19015.041289999	596	0	445	art	n	pfps	n	n	n	n	n
+metaops.csv	1261.3925	528	0	0	art	n	pfps	n	n	n	n	n
+iconicapeclub3d.csv	626.967208642	227	2999	0	n	n	pfps	n	n	n	n	n
+stepn.csv	1512.6088	55	0	518	art	n	pfps	n	n	n	n	n
+psyker.csv	673.463124484	418	0	0	n	n	n	n	n	n	launchpad	n
+magicticket.csv	30018.531927121	1397	0	0	n	n	pfps	n	n	none	n	n
+solgods.csv	287196.04921	386	0	1121	n	n	pfps	n	n	none	n	n
+mongomons.csv	22189.66687949	1420	10000	956	art	n	n	n	virtual_worlds	n	n	n
+the_fellowship.csv	1586.51362659	305	0	0	art	n	pfps	n	n	n	n	n
+degendojonft.csv	21412.696832	289	0	1873	n	n	pfps	n	n	n	n	n
+visionary_studios.csv	1338.28	29	0	0	art	n	pfps	n	n	n	n	n
+bushidosociety.csv	10685.60967888	581	0	694	art	n	n	n	n	none	n	n
+aurory.csv	35162.95	244	10002	395	n	games	pfps	n	n	n	n	n
+kamakura.csv	840.202414	235	3333	486	art	n	pfps	n	n	n	n	n
+",
+                  stringsAsFactors = FALSE)
+```
+
+```{r}
+model <- rpart(
+  art ~ pricetotal + total_transactions + totalItems + watchlistCount , 
+  data = dat, 
+  control = rpart.control(minsplit = 8))
+
+par(xpd = NA, mar = rep(0.7, 4)) 
+plot(model, compress = TRUE)
+text(model, cex = 0.7, use.n = TRUE, fancy = FALSE, all = TRUE)
+```
+
+```{r}
+model <- rpart(
+  pricetotal ~ art + games + pfps + sports + virtual_worlds + none + launchpad + photography , 
+  data = dat, 
+  control = rpart.control(minsplit = 5))
+
+par(xpd = NA, mar = rep(0.7, 4)) 
+plot(model, compress = TRUE)
+text(model, cex = 0.7, use.n = TRUE, fancy = FALSE, all = TRUE)
+```
+
+Con estos dos arboles podemos obtener mas informacion sobre con que atributos y valores a traves de una ciertas condiciones una coleccion NFT puede pertenecer a una categoria.
+
+*** 
+
+## Ejercicio 6
+
+### Identifica qué posibles limitaciones tienen los datos que has seleccionado para obtener conclusiones con los modelos (supervisado y no supervisado)
+
+### Se identifican posibles riesgos del uso del modelo  (mínimo 300 palabras).
+
+Tras haber generado todo este analisis y otro mucho de prueba y error se puede concluir oficialmente que no existen una forma de definir si una coleccion NFT pertenece a una categoria con los atributos que nos facilita el juego de datos y, por lo tanto, al no poderse concluir la categoria no existe forma de averiguar con los datos que nos proporciona este dataset, si una categoria es mas rentable que otra.
+
+Con respecto a los riesgos del uso de los modelos implementados en esta practica he podido concluir los siguientes aspectos:
+- Modelos no supervisados: Al tratarse de un modelo que utiliza informacion que no esta clasificada ni etiquetada y donde el algoritmo actua sobre esta informacion sin guia, cuando en nuestro caso, las categorias no estan claramente definidas en concepto de objetos creados, ganancias o transacciones al algoritmo le es imposible generar una categorizacion de forma inversa a lo que te puede proporcionar un tree model.
+
+- Modelos supervisados: Este en primera instancia parece ser el mas eficiente para cuando a traves de distintos valores de distintos atributos se pretende conocer la categoria (que se conoce) a la que pertence. Sin embargo, no puede aplicar este conocimiento si no encuentra inputs etiquetados para obtener un output conocido.
+
+- DBSCAN y OPTICS: Ambos modelos son metodos de clusterizacion adecuados para buscar patrones de agrupacion en metodos jerarquicos. Al agrupar los puntos que estan mas cercanos respecto alguna metrica es un algoritmo no tan util para conjuntos de datos grandes y con valores muy extremos. Además, no es conveniente utilizarlo con atributos donde la disparidad del valor es elevada ya que genera un modelo con excesivo ruido. Por otro lado, no funciona con vector de un tamaño mayor a 7.6 gb.
+
+- TreeModel: Los modelos de estructura de arbol son muy utiles para manejar diferentes tipos de variables exceptuando por el hecho de que a diferencia de los algoritmos anteriormente mencionados este es el mas propenso a no utilizar todo el conjunto de atributos que se proporcionan por las reglas o asociaciones que genera.
+
+
+
+### Enlaces
+https://bookdown.org/dparedesi/data-science-con-r/aprendizaje-no-supervisado.html
+https://community.rstudio.com/t/solved-recode-variable-from-text-to-numbers/10580/8
+https://es.stackoverflow.com/questions/212466/c%C3%B3mo-eliminar-filas-en-data-frames-con-determinadas-caracter%C3%ADsticas
+  
+*** 
+
+
+
+
+
+
+
