@@ -1,0 +1,998 @@
+---
+title: 'Minería de datos: PEC3 - Clasificación con árboles de decisión'
+author: "Autor: Frank Cespedes"
+date: "Abril 2022"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+    includes:
+      in_header: 75.584-PEC-header.html
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+  word_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=T, echo=T)
+```
+
+------------------------------------------------------------------------
+
+# Recursos básicos
+
+------------------------------------------------------------------------
+
+Esta Prueba de Evaluación Continuada (PEC) cubre principalmente el
+material didáctico de modelos supervisados y evaluación de modelos.
+
+Complementarios:
+
+-   Material docente "Creación y evaluación de modelos no supervisados"
+    proporcionado por la UOC.
+-   Fichero titanic.csv.
+-   R package C5.0 (Decision Trees and Rule-Based Models):
+    <https://cran.r-project.org/web/packages/C50/index.html>
+-   Fichero de "German Credit": credit.csv (se obtuvo de
+    <https://www.kaggle.com/shravan3273/credit-approval>)
+
+La descripción de las variables se puede ver en
+[https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data)](https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data)){.uri}
+
+**La variable "default" es el target siendo 1 = "No default" y 2 =
+"Default". Se deben utilizar estos datos para la realización de los
+ejercicios.**
+
+------------------------------------------------------------------------
+
+# Ejemplo ilustrativo
+
+------------------------------------------------------------------------
+
+En este ejercicio vamos a seguir los pasos del ciclo de vida de un
+proyecto de minería de datos, para el caso de un algoritmo de
+clasificación y más concretamente un árbol de decisión. Primero y a modo
+de ejemplo sencillo lo haremos con el archivo titanic.csv, que se
+encuentra adjunto en el aula. Este archivo contiene un registro por cada
+pasajero que viajaba en el Titanic. En las variables se caracteriza si
+era hombre o mujer, adulto o menor (niño), en qué categoría viajaba o si
+era miembro de la tripulación. Se mostrará un ejemplo sencillo de
+solución con estos datos pero los alumnos deberéis responder a las
+preguntas de la rúbrica para otro conjunto: German Credit. Para este
+conjunto, tomaréis como referencia la variable "default" que indica el
+impago de créditos.
+
+**Objetivos:**
+
+-   Estudiar los datos, por ejemplo: ¿Número de registros del fichero?
+    ¿Distribuciones de valores por variables? ¿Hay campos mal informados
+    o vacíos?
+-   Preparar los datos. En este caso ya están en el formato correcto y
+    no es necesario discretizar ni generar atributos nuevos. Hay que
+    elegir cuáles son las variables que se utilizarán para construir el
+    modelo y cuál es la variable que clasifica. En este caso la variable
+    por la que clasificaremos es el campo de si el pasajero sobrevivia o
+    no.
+-   Instalar, si es necesario, el paquete C5.0 Se trata de una
+    implementación más moderna del algoritmo ID3 de Quinlan. Tiene los
+    principios teóricos del ID3 más la poda automática. Con este paquete
+    generar un modelo de minería.
+-   ¿Cuál es la calidad del modelo?
+-   Generar el árbol gráfico.
+-   Generar y extraer las reglas del modelo.
+-   En función del modelo, el árbol y las reglas: ¿Cuál es el
+    conocimiento que obtenemos?
+-   Probar el modelo generado presentándole nuevos registros. ¿Clasifica
+    suficientemente bien?
+
+A continuación, se plantean los puntos a realizar en la PEC 3 y, tomando
+como ejemplo el conjunto de datos de Titanic, se obtendrán, a modo de
+ejemplo, algunos resultados que pretender servir a modo de inspiración
+para los estudiantes. Los estudiantes deberán utilizar el conjunto de
+datos de "German Credit Data" que se pueden conseguir en este enlace:
+<https://www.kaggle.com/shravan3273/credit-approval>
+
+Revisión de los datos, extracción visual de información y preparación de
+los datos
+
+Carga de los datos:
+
+```{r message= FALSE, warning=FALSE}
+data<-read.csv("./titanic.csv",header=T,sep=",")
+attach(data)
+```
+
+## Análisis inicial
+
+Empezaremos haciendo un breve análisis de los datos ya que nos interesa
+tener una idea general de los datos que disponemos.
+
+### Exploración de la base de datos
+
+Primero calcularemos las dimensiones de nuestra base de datos y
+analizaremos qué tipos de atributos tenemos.
+
+Para empezar, calculamos las dimensiones de la base de datos mediante la
+función dim(). Obtenemos que disponemos de 2201 registros o pasajeros
+(filas) y 4 variables (columnas).
+
+```{r}
+dim(data)
+```
+
+¿Cuáles son esas variables? Gracias a la función str() sabemos que las
+cuatro variables son categóricas o discretas, es decir, toman valores en
+un conjunto finito. La variable CLASS hace referencia a la clase en la
+que viajaban los pasajeros (1ª, 2ª, 3ª o crew), AGE determina si era
+adulto o niño (Adulto o Menor), la variable SEX si era hombre o mujer
+(Hombre o Mujer) y la última variable (SURVIVED) informa si el pasajero
+murió o sobrevivió en el accidente (Muere o Sobrevive).
+
+```{r}
+str(data)
+```
+
+Es de gran interés saber si tenemos muchos valores nulos (campos vacíos)
+y la distribución de valores por variables. Es por ello recomendable
+empezar el análisis con una visión general de las variables. Mostraremos
+para cada atributo la cantidad de valores perdidos mediante la función
+summary.
+
+```{r}
+summary(data)
+```
+
+Como parte de la preparación de los datos, miraremos si hay valores
+missing.
+
+```{r}
+missing <- data[is.na(data),]
+dim(missing)
+```
+
+Observamos fácilmente que no hay valores missing y, por tanto, no
+deberemos preparar los datos en este sentido. En caso de haberlos,
+habría que tomar decisiones para tratar los datos adecuadamente.
+
+Disponemos por tanto de un data frame formado por cuatro variables
+categóricas sin valores nulos.
+
+### Visualización
+
+Para un conocimiento mayor sobre los datos, tenemos a nuestro alcance
+unas herramientas muy valiosas: las herramientas de visualización. Para
+dichas visualizaciones, haremos uso de los paquetes ggplot2, gridExtra y
+grid de R.
+
+```{r}
+if(!require(ggplot2)){
+    install.packages('ggplot2', repos='http://cran.us.r-project.org')
+    library(ggplot2)
+}
+if(!require(ggpubr)){
+    install.packages('ggpubr', repos='http://cran.us.r-project.org')
+    library(ggpubr)
+}
+if(!require(grid)){
+    install.packages('grid', repos='http://cran.us.r-project.org')
+    library(grid)
+}
+if(!require(gridExtra)){
+    install.packages('gridExtra', repos='http://cran.us.r-project.org')
+    library(gridExtra)
+}
+if(!require(C50)){
+    install.packages('C50', repos='http://cran.us.r-project.org')
+    library(C50)
+}
+
+```
+
+Siempre es importante analizar los datos que tenemos ya que las
+conclusiones dependerán de las características de la muestra.
+
+```{r}
+grid.newpage()
+plotbyClass<-ggplot(data,aes(CLASS))+geom_bar() +labs(x="Class", y="Passengers")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("blue","#008000"))+ggtitle("Class")
+plotbyAge<-ggplot(data,aes(AGE))+geom_bar() +labs(x="Age", y="Passengers")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("blue","#008000"))+ggtitle("Age")
+plotbySex<-ggplot(data,aes(SEX))+geom_bar() +labs(x="Sex", y="Passengers")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("blue","#008000"))+ggtitle("Sex")
+plotbySurvived<-ggplot(data,aes(SURVIVED))+geom_bar() +labs(x="Survived", y="Passengers")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("blue","#008000"))+ggtitle("SURVIVED")
+grid.arrange(plotbyClass,plotbyAge,plotbySex,plotbySurvived,ncol=2)
+
+```
+
+Claramente vemos cómo es la muestra analizando la distribución de las
+variables disponibles. De cara a los informes, es mucho más interesante
+esta información que la obtenida en summary, que se puede usar para
+complementar.
+
+Nos interesa describir la relación entre la supervivencia y cada uno de
+las variables mencionadas anteriormente. Para ello, por un lado
+graficaremos mediante diagramas de barras la cantidad de muertos y
+supervivientes según la clase en la que viajaban, la edad o el sexo. Por
+otro lado, para obtener los datos que estamos graficando utilizaremos el
+comando table para dos variables que nos proporciona una tabla de
+contingencia.
+
+```{r}
+grid.newpage()
+plotbyClass<-ggplot(data,aes(CLASS,fill=SURVIVED))+geom_bar() +labs(x="Class", y="Passengers")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("black","#008000"))+ggtitle("Survived by Class")
+plotbyAge<-ggplot(data,aes(AGE,fill=SURVIVED))+geom_bar() +labs(x="Age", y="Passengers")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("black","#008000"))+ggtitle("Survived by Age")
+plotbySex<-ggplot(data,aes(SEX,fill=SURVIVED))+geom_bar() +labs(x="Sex", y="Passengers")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("black","#008000"))+ggtitle("Survived by Sex")
+grid.arrange(plotbyClass,plotbyAge,plotbySex,ncol=2)
+
+```
+
+De estos gráficos obtenemos información muy valiosa que complementamos
+con las tablas de contingencia (listadas abajo). Por un lado, la
+cantidad de pasajeros que sobrevivieron es similar en hombres y mujeres
+(hombres: 367 y mujeres 344). No, en cambio, si tenemos en cuenta el
+porcentaje respecto a su sexo. Es decir, pese a que la cantidad de
+mujeres y hombres que sobrevivieron es pareja, viajaban más hombres que
+mujeres (470 mujeres y 1731 hombres), por lo tanto, la tasa de muerte en
+hombres es muchísimo mayor (el 78,79% de los hombres murieron mientras
+que en mujeres ese porcentaje baja a 26,8%).
+
+En cuanto a la clase en la que viajaban, los pasajeros que viajaban en
+primera clase fueron los únicos que el porcentaje de supervivencia era
+mayor que el de mortalidad. El 62,46% de los viajeros de primera clase
+sobrevivió, el 41,4% de los que viajaban en segunda clase mientras que
+de los viajeros de tercera y de la tripulación solo sobrevivieron un
+25,21% y 23,95% respectivamente. Para finalizar, destacamos que la
+presencia de pasajeros adultos era mucho mayor que la de los niños (2092
+frente a 109) y que la tasa de supervivencia en niños fue mucho mayor
+(52,29% frente a 31,26%), no podemos obviar, en cambio, que los únicos
+niños que murieron fueron todos pasajeros de tercera clase (52 niños).
+
+```{r}
+tabla_SST <- table(SEX, SURVIVED)
+tabla_SST
+prop.table(tabla_SST, margin = 1)
+```
+
+```{r}
+tabla_SCT <- table(CLASS,SURVIVED)
+tabla_SCT
+prop.table(tabla_SCT, margin = 1)
+```
+
+```{r}
+tabla_SAT <- table(AGE,SURVIVED)
+tabla_SAT
+prop.table(tabla_SAT, margin = 1) 
+```
+
+```{r}
+tabla_SAT.byClass <- table(AGE,SURVIVED,CLASS)
+tabla_SAT.byClass
+```
+
+### Test estadísticos de significancia
+
+Los resultados anteriores muestran los datos de forma descriptiva,
+podemos añadir algún test estadístico para validar el grado de
+significancia de la relación. La librería "DescTools" nos permite
+instalarlo fácilmente.
+
+```{r}
+if(!require(DescTools)){
+    install.packages('DescTools', repos='http://cran.us.r-project.org')
+    library(DescTools)
+}
+```
+
+```{r}
+Phi(tabla_SST) 
+CramerV(tabla_SST) 
+```
+
+```{r}
+Phi(tabla_SAT) 
+CramerV(tabla_SAT) 
+```
+
+```{r}
+Phi(tabla_SCT) 
+CramerV(tabla_SCT) 
+```
+
+Valores de la V de Cramér
+([https://en.wikipedia.org/wiki/Cramér%27s_V](https://en.wikipedia.org/wiki/Cramér%27s_V){.uri})
+y Phi (<https://en.wikipedia.org/wiki/Phi_coefficient>) entre 0.1 y 0.3
+nos indican que la asociación estadística es baja, y entre 0.3 y 0.5 se
+puede considerar una asociación media. Finalmente, si los valores fueran
+superiores a 0.5 (no es el caso), la asociación estadística entre las
+variables sería alta. Como se puede apreciar, los valores de Phi y V
+coinciden. Esto ocurre en el contexto de analizar tablas de contingencia
+2x2.
+
+Una alternativa interesante a las barras de diagramas, es el plot de las
+tablas de contingencia. Obtenemos la misma información pero para algunos
+receptores puede resultar más visual.
+
+```{r}
+par(mfrow=c(2,2))
+plot(tabla_SCT, col = c("black","#008000"), main = "SURVIVED vs. CLASS")
+plot(tabla_SAT, col = c("black","#008000"), main = "SURVIVED vs. AGE")
+plot(tabla_SST, col = c("black","#008000"), main = "SURVIVED vs. SEX")
+```
+
+Nuestro objetivo es crear un árbol de decisión que permita analizar qué
+tipo de pasajero del Titanic tenía probabilidades de sobrevivir o no.
+Por lo tanto, la variable por la que clasificaremos es el campo de si el
+pasajero sobrevivió o no. De todas maneras, al imprimir las primeras
+(con head) y últimas 10 (con tail) filas nos damos cuenta de que los
+datos están ordenados.
+
+```{r}
+head(data,10)
+tail(data,10)
+```
+
+Nos interesa "desordenarlos". Guardaremos los datos con el nuevo nombre
+como "data_random".
+
+```{r}
+set.seed(1)
+data_random <- data[sample(nrow(data)),]
+```
+
+## Preparación de los datos para el modelo
+
+Para la futura evaluación del árbol de decisión, es necesario dividir el
+conjunto de datos en un conjunto de entrenamiento y un conjunto de
+prueba. El conjunto de entrenamiento es el subconjunto del conjunto
+original de datos utilizado para construir un primer modelo; y el
+conjunto de prueba, el subconjunto del conjunto original de datos
+utilizado para evaluar la calidad del modelo.
+
+Lo más correcto será utilizar un conjunto de datos diferente del que
+utilizamos para construir el árbol, es decir, un conjunto diferente del
+de entrenamiento. No hay ninguna proporción fijada con respecto al
+número relativo de componentes de cada subconjunto, pero la más
+utilizada acostumbra a ser 2/3 para el conjunto de entrenamiento y 1/3,
+para el conjunto de prueba.
+
+La variable por la que clasificaremos es el campo de si el pasajero
+sobrevivió o no, que está en la cuarta columna. De esta forma, tendremos
+un conjunto de datos para el entrenamiento y uno para la validación
+
+```{r}
+set.seed(666)
+y <- data_random[,4] 
+X <- data_random[,1:3] 
+```
+
+De forma dinámica podemos definir una forma de separar los datos en
+función de un parámetro, en este caso del "split_prop". Definimos un
+parámetro que controla el split de forma dinámica en el test.
+
+```{r}
+split_prop <- 3 
+max_split<-floor(nrow(X)/split_prop)
+tr_limit <- nrow(X)-max_split
+ts_limit <- nrow(X)-max_split+1
+
+trainX <- X[1:tr_limit,]
+trainy <- y[1:tr_limit]
+testX <- X[ts_limit+1:nrow(X),]
+testy <- y[ts_limit+1:nrow(X)]
+```
+
+En la segunda opción podemos crear directamente un rango utilizando el
+mismo parámetro anterior.
+
+```{r}
+split_prop <- 3 
+indexes = sample(1:nrow(data), size=floor(((split_prop-1)/split_prop)*nrow(data)))
+trainX<-X[indexes,]
+trainy<-y[indexes]
+testX<-X[-indexes,]
+testy<-y[-indexes]
+```
+
+Después de una extracción aleatoria de casos es altamente recomendable
+efectuar un análisis de datos mínimo para asegurarnos de no obtener
+clasificadores sesgados por los valores que contiene cada muestra. En
+este caso, verificaremos que la proporción del supervivientes es más o
+menos constante en los dos conjuntos:
+
+```{r}
+summary(trainX);
+summary(trainy)
+summary(testX)
+summary(testy)
+```
+
+Verificamos fácilmente que no hay diferencias graves que puedan sesgar
+las conclusiones.
+
+## Creación del modelo, calidad del modelo y extracción de reglas
+
+Se crea el árbol de decisión usando los datos de entrenamiento (no hay
+que olvidar que la variable outcome es de tipo factor):
+
+```{r}
+trainy = as.factor(trainy)
+model <- C50::C5.0(trainX, trainy,rules=TRUE )
+summary(model)
+```
+
+Errors muestra el número y porcentaje de casos mal clasificados en el
+subconjunto de entrenamiento. El árbol obtenido clasifica erróneamente
+317 de los 1467 casos dados, una tasa de error del 21.6%.
+
+A partir del árbol de decisión de dos hojas que hemos modelado, se
+pueden extraer las siguientes reglas de decisión (gracias a rules=TRUE
+podemos imprimir las reglas directamente):
+
+SEX = "Hombre" → Muere. Validez: 78,1%
+
+CLASS "1ª", "2ª" y AGE = "Menor" → Sobrevive. Validez: 95,5%
+
+SEX = "Mujer" → Sobrevive. Validez: 74,7%
+
+Por tanto, podemos concluir que el conocimiento extraído y cruzado con
+el análisis visual se resume en "las mujeres y los niños primero a
+excepción de que fueras de 3ª clase".
+
+A continuación, mostramos el árbol obtenido.
+
+```{r}
+model <- C50::C5.0(trainX, trainy)
+plot(model)
+```
+
+## Validación del modelo con los datos reservados
+
+Una vez tenemos el modelo, podemos comprobar su calidad prediciendo la
+clase para los datos de prueba que nos hemos reservado al principio.
+
+```{r}
+predicted_model <- predict( model, testX, type="class" )
+print(sprintf("La precisión del árbol es: %.4f %%",100*sum(predicted_model == testy) / length(predicted_model)))
+```
+
+Cuando hay pocas clases, la calidad de la predicción se puede analizar
+mediante una matriz de confusión que identifica los tipos de errores
+cometidos.
+
+```{r}
+mat_conf<-table(testy,Predicted=predicted_model)
+mat_conf
+```
+
+Otra manera de calcular el porcentaje de registros correctamente
+clasificados usando la matriz de confusión:
+
+```{r}
+
+porcentaje_correct<-100 * sum(diag(mat_conf)) / sum(mat_conf)
+print(sprintf("El %% de registros correctamente clasificados es: %.4f %%",porcentaje_correct))
+
+```
+
+Además, tenemos a nuestra disposición el paquete gmodels para obtener
+información más completa:
+
+```{r}
+if(!require(gmodels)){
+    install.packages('gmodels', repos='http://cran.us.r-project.org')
+    library(gmodels)
+}
+```
+
+```{r}
+CrossTable(testy, predicted_model,prop.chisq  = FALSE, prop.c = FALSE, prop.r =FALSE,dnn = c('Reality', 'Prediction'))
+```
+
+## Prueba con una variación u otro enfoque algorítmico
+
+En este apartado buscaremos probar con las variaciones que nos ofrece el
+paquete C5.0 para analizar cómo afectan a la creación de los árboles
+generados. Existen muchas posibles variaciones con otras funciones que
+podéis investigar. La idea es seguir con el enfoque de árboles de
+decisión explorando posibles opciones. Una vez tengamos un método
+alternativo, debemos analizar cómo se modifica el árbol y cómo afecta a
+la capacidad predictiva en el conjunto de test.
+
+A continuación, utilizamos otro enfoque para comparar los resultados:
+incorpora como novedad "adaptative boosting", basado en el trabajo Rob
+Schapire and Yoav Freund (1999). La idea de esta técnica es generar
+varios clasificadores, con sus correspondientes arboles de decisión y su
+ser de reglas. Cuando un nuevo caso va a ser clasificado, cada
+clasificador vota cual es la clase predicha. Los votos son sumados y
+determina la clase final.
+
+```{r}
+modelo2 <- C50::C5.0(trainX, trainy, trials = 10)
+plot(modelo2)
+```
+
+En este caso, dada la simplicidad del conjunto de ejemplo, no se
+aprecian diferencias, pero aparecerán en datos de mayor complejidad y
+modificando el parámetro "trials" se puede intentar mejorar los
+resultados.
+
+Vemos a continuación cómo son las predicciones del nuevo árbol:
+
+```{r}
+predicted_model2 <- predict( modelo2, testX, type="class" )
+print(sprintf("La precisión del árbol es: %.4f %%",100*sum(predicted_model2 == testy) / length(predicted_model2)))
+```
+
+Observamos como se modifica levemente la precisión del modelo a mejor.
+
+```{r}
+mat_conf<-table(testy,Predicted=predicted_model2)
+mat_conf
+```
+
+Otra manera de calcular el porcentaje de registros correctamente
+clasificados usando la matriz de confusión:
+
+```{r}
+
+porcentaje_correct<-100 * sum(diag(mat_conf)) / sum(mat_conf)
+print(sprintf("El %% de registros correctamente clasificados es: %.4f %%",porcentaje_correct))
+
+```
+
+El algoritmo C5.0 incorpora algunas opciones para ver la importancia de
+las variables (ver documentación para los detalles entre los dos
+métodos):
+
+```{r}
+importancia_usage <- C50::C5imp(modelo2, metric = "usage")
+importancia_splits <- C50::C5imp(modelo2, metric = "splits")
+importancia_usage
+importancia_splits
+```
+
+Curiosamente y aunque el conjunto de datos es muy sencillo, se aprecian
+diferencias en los métodos de importancia de las variables. Se
+recomienda en vuestro ejercicio mejorar la visualización de los
+resultados con la función ggplo2 o similar.
+
+# Enunciado del ejercicio
+
+Para el conjunto de datos German Credit, los alumnos deben completar
+aquí la solución a la PEC3 que consiste de los siguientes apartados.
+Notad que se detalla el contenido necesario para cada apartado en la
+Sección 4 (Rúbrica).
+
+El formato de entrega es como en las anteriores PECs:
+**usernameestudiant-PECn.html** (o PDF/Word) y el código **Rmd**.
+
+Se debe entregar la PEC en el buzón de entregas del aula, como en las
+anteriores PECs.
+
+## Realizar un primer análisis descriptivo y de correlaciones. Es importante en este apartado entender bien los datos antes de seguir con los análisis posteriores. Lista todo lo que te haya sorprendido de los datos
+
+## Realizar un primer árbol de decisión. Puedes decidir utilizar todas las variables o, de forma justificada, quitar alguna para el ajuste del modelo
+
+## Con el árbol obtenido, realiza una breve explicación de las reglas obtenidas así como de todos los puntos que te parezcan interesantes. Un elemento a considerar es, por ejemplo, cuantas observaciones caen dentro de cada regla
+
+## Una vez tengas un modelo válido, procede a realizar un análisis de la bondad de ajuste sobre el conjunto de test y matriz de confusión. ¿Te parece un modelo suficientemente bueno como para utilizarlo? Justifica tu respuesta considerando todos los posibles tipos de error
+
+## Con un enfoque parecido a los puntos anteriores y considerando las mismas variables, enriquece el ejercicio mediante el ajuste de modelos complementarios. ¿Es el nuevo enfoque mejor que el original? Justifica la respuesta
+
+## Haz un resumen de las principales conclusiones de todos los análisis y modelos realizados
+
+------------------------------------------------------------------------
+
+# Solución
+
+------------------------------------------------------------------------
+
+> El conjunto de datos esta basado en la recopilación de los datos de
+> clientes que disponen de créditos y en función a distintos factores de
+> información personal recopilar cuales son aptos a recibir un buen
+> crédito y cuales no.
+
+> Carga de los datos
+
+```{r}
+credit <- read.csv("credit.csv", header = T, stringsAsFactors = T)
+```
+
+> Empezaremos haciendo un breve análisis del dataset para obtener una
+> idea general de los datos que disponemos.
+
+```{r}
+dim(credit)
+```
+
+> Se disponen de 1000 registros y 21 variables
+
+```{r}
+str(credit)
+```
+
+> La información de los atributos es la siguiente
+>
+> **checking balance:** Estado de la cuenta corriente existente
+>
+> **months_loan_duration**: Duración
+>
+> **credit_history**: Historial crediticio
+>
+> **purpose**: Propósito
+>
+> **amount**: Monto del crédito
+>
+> **savings_balance**: Cuenta de ahorro/bonos
+>
+> **employment_lenght**: Empleo actual desde...
+>
+> **installment_rate**: Tasa de cuota en porcentaje del ingreso
+> disponible
+>
+> **personal_status**: Situación personal y sexo
+>
+> **other_debtors**: Otros deudores
+>
+> **residence_history**: Residencia actual desde...
+>
+> **property**: Propiedad
+>
+> **age**: Edad en años
+>
+> **installment_plan**: Otros planes de pago en cuotas
+>
+> **housing**: Vivienda
+>
+> **existing_credits**: Numero de créditos existentes en este banco
+>
+> **default**: Si se trata de un cliente bueno (1) o uno malo (2)
+>
+> **dependents**: Numero de personas que son dependientes del
+> solicitante del crédito
+>
+> **telephone: Telefono**
+>
+> **foreign_worker**: Trabajador extranjero
+>
+> **job**: Empleo
+
+```{r}
+summary(credit)
+```
+
+> Tras observar el conjunto de datos, podemos concluir que no existen
+> valores nulos. Seria interesante hacer una factorización de la columna
+> default para trabajar posteriormente con ella.
+
+```{r}
+credit$default <- factor(credit$default, labels = c("good", "bad"))
+
+table(credit$default)
+```
+
+> Con esto, cuando encontremos el valor (1 = good) y (2 = bad)
+
+> Por otro lado, es interesante ordenar los factores checking_balance,
+> credit_history, savings_balance y employment_length para que a la hora
+> de generar el árbol siga un orden de menos a mas ya que disponemos de
+> un conjunto de datos grande a nivel de variables.
+
+```{r}
+l <- levels(credit$checking_balance)
+credit$checking_balance <- factor(credit$checking_balance,
+                                levels = c(l[4], l[1], l[3], l[2]),
+                                ordered=T)
+table(credit$checking_balance)
+```
+
+```{r}
+l <- levels(credit$credit_history)
+credit$credit_history <- factor(credit$credit_history,
+                              levels=rev(l),
+                              ordered = T)
+table(credit$credit_history)
+```
+
+```{r}
+l <- levels(credit$savings_balance)
+credit$savings_balance <- factor (credit$savings_balance,
+                                levels = c(l[5], l[1], l[3], l[4], l[2]),
+                                ordered=T)
+table(credit$savings_balance)
+```
+
+```{r}
+l <- levels(credit$employment_length)
+credit$employment_length <- factor (credit$employment_length,
+                                  levels = c(l[5], l[2], l[3], l[4], l[1]),
+                                  ordered=T)
+table(credit$employment_length)
+```
+
+> Tras haberse convertidor los factors a order.Factor, generaremos con
+> la función ggplot la información de las variables en los gráficos. He
+> seleccionado los atributos que parecen influir mas a la hora de
+> assignar a un cliente si es conveniente ofrecerle un crédito bueno o
+> malo.
+
+```{r}
+plotJob<-ggplot(credit,aes(job,fill=default))+geom_bar() +labs(x="", y="") + scale_fill_manual(values=c("#ADDFFF","#2B65EC")) + ggtitle("Job") + coord_flip()
+plotForeignWorker<-ggplot(credit,aes(foreign_worker,fill=default))+geom_bar() +labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC")) + ggtitle("Foreign") + coord_flip()
+plotDependents<-ggplot(credit,aes(dependents,fill=default))+geom_bar() + labs(x="", y="") + scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Dependents") + coord_flip()
+plotCheckingBalance<-ggplot(credit,aes(checking_balance,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Checking balance") + coord_flip()
+plotAge<-ggplot(credit,aes(age,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Age") 
+plotPersonalStatus<-ggplot(credit,aes(personal_status,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Personal Status") + coord_flip()
+plotEmploymentLength<-ggplot(credit,aes(employment_length,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Employment Length") + coord_flip()
+plotSavingsBalance<-ggplot(credit,aes(savings_balance,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Savings Balance") + coord_flip()
+plotPurpose<-ggplot(credit,aes(purpose,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Purpose") + coord_flip()
+plotCreditHistory<-ggplot(credit,aes(credit_history,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Credit History") + coord_flip()
+plotMonthsDuration<-ggplot(credit,aes(months_loan_duration,fill=default))+geom_bar() + labs(x="", y="")+ scale_fill_manual(values=c("#ADDFFF","#2B65EC"))+ ggtitle("Months Loan Duration") 
+```
+
+> Generaremos por otro lado los porcentajes de las tablas que
+> consideremos necesarios para generar un mejor analisis
+
+```{r}
+tabla_Job <- table(credit$job, credit$default)
+tabla_CB <- table(credit$checking_balance, credit$default)
+tabla_EL <- table(credit$employment_length, credit$default)
+tabla_SB <- table(credit$savings_balance, credit$default)
+tabla_Purpose <- table(credit$purpose, credit$default)
+tabla_CH <- table(credit$credit_history, credit$default)
+```
+
+```{r}
+grid.arrange(plotForeignWorker, plotMonthsDuration, ncol=1)
+```
+
+> Foreign: Los extranjeros consisten en aproximadamente un 90% de la
+> cartera de clientes. Por otro lado, mas de un 1/4 de los extranjeros
+> se consideran de riesgo.
+>
+> Months_loan_duration: La mayoria de las duraciones de los creditos
+> ronda entre 6, 12, 18, 24, 36 meses. A partir del año es cuando se
+> observa que las condiciones de los creditos pueden ser menos
+> atractactivas.
+
+```{r}
+grid.arrange(plotJob,plotCheckingBalance,plotDependents, ncol=1)
+```
+
+> Porcentaje en base al trabajo
+
+```{r}
+tabla_Job
+prop.table(tabla_Job, margin = 1)
+```
+
+> Porcentaje en base al saldo en cuenta corriente
+
+```{r}
+tabla_CB
+prop.table(tabla_CB, margin = 1)
+```
+
+> Job: Principalmente la cartera de clientes esta organizada por
+> trabajadores cualificados. En primera instancia no parece influir tu
+> posicion laboral con el impago de un credito.
+>
+> Checking_balance: Existe un gran porcentaje de clientes de los cuales
+> no disponemos del saldo en su cuenta corriente a pesar de que tienden
+> a obtener segun el algoritmo bueno registros de creditos obtenidos. El
+> problema se encontraria en el historial crediticio de los individuos
+> que rondan entre 1-200 DM y \< 0 DM
+>
+> Dependents: No parece influir el numero de personas a cargo para
+> obtener un buen credito. Aunque, gran parte de nuestra carter +80%
+> tienen solo 1 persona a cargo
+
+```{r}
+grid.arrange(plotAge)
+```
+
+> Age: Se observa que gran parte de los clientes rondan entre los 23 y
+> 40 años. A pesar de que gran parte de los creditos malos ofrecidos se
+> encuentran entre estos rangos de edad, no es por un indicio aparente
+> sino mas bien por volumen.
+
+```{r}
+grid.arrange(plotEmploymentLength,plotPurpose,ncol=1)
+```
+
+> Porcentaje en base a la antiguedad en el trabajo
+
+```{r}
+tabla_EL
+prop.table(tabla_EL, margin = 1)
+```
+
+> Porcentaje en base al tipo proposito del credito
+
+```{r}
+tabla_Purpose
+prop.table(tabla_Purpose, margin = 1)
+```
+
+> Employment_Length: Gran parte de los creditos son demandados a partir
+> de tener mas de un año de antiguedad.
+
+> Purpose: Gran parte de los creditos son demandados para radio/tv o
+> para un coche nuevo.
+
+```{r}
+grid.arrange(plotSavingsBalance, plotCreditHistory, plotPersonalStatus, ncol=1)
+```
+
+> Porcentaje en base al historial crediticio
+
+```{r}
+tabla_CH
+prop.table(tabla_CH, margin = 1)
+```
+
+> Porcentaje en base a la cuenta de ahorros
+
+```{r}
+tabla_SB
+prop.table(tabla_SB, margin = 1)
+```
+
+> Savings Balance : Un 60% de creditos son demandados por personas que
+> disponen mas de \< 100 DM
+
+> Credit History: Ni tan siquiera el haber tenido un mal historial
+> crediticio afecta a la hora de ofrecerte un buen credito. Mas de un
+> 45% reembolso el credito.
+
+> Personal Status: Gran parte de los demandantes son hombres solteros o
+> mujeres.
+>
+> Ahora observaremos si existe una correlacion clara entre algunas de
+> las variables analizadas
+
+```{r}
+corr_credit <- credit[,!sapply(credit,is.factor)]
+corr <- round(cor(corr_credit, method="spearman"),2)
+corrplot::corrplot.mixed(corr)
+```
+
+> Observamos que solo parece existir una correlacion entre la duracion
+> del credito, el monto y el historial crediticio
+>
+> Ahora generaremos dos muestras: una para entrenamiento y otra para
+> test. El conjunto de datos de entrenamiento dispondra de 2/3 de los
+> datos del dataset original y el de test el tercio restante.
+
+```{r}
+set.seed(1)
+indexes = sample(1:nrow(credit), size=floor((2/3)*nrow(credit)))
+
+trainCredit <- credit[indexes,]
+testCredit <- credit[-indexes,]
+```
+
+> Mostraremos los factores mas simples del arbol y basaremos toda la
+> generacion en base a default.
+
+```{r}
+modelCredit <- C5.0(trainCredit[-17], trainCredit$default)
+modelCredit
+```
+
+> Ahora mostraremos toda la informacion sobre el arbol de forma
+> desglosada
+
+```{r}
+summary(modelCredit)
+```
+
+> Ahora con el paquete gmodels obtendremos información más completa.
+
+```{r}
+predictModelCredit <- predict( modelCredit, testCredit, type="class" )
+CrossTable(testCredit$default, predictModelCredit,prop.chisq  = FALSE, prop.c = FALSE, prop.r =FALSE,dnn = c('Actual', 'Predicted'))
+```
+
+> Con los elementos clasificados, el modelo utilizado sirve para
+> clasificar con una buena tasa de acierto la categoría good.
+>
+> Ahora procederemos a usar Random Forest ya que así podremos intentar
+> evitar el sobre ajuste.
+>
+> Primero, instalamos y cargamos la librería.
+
+```{r}
+if(!require(randomForest)){
+    install.packages('randomForest', repos='http://cran.us.r-project.org')
+    library(randomForest)
+}
+```
+
+> Generamos un RandomForest ajustado al modelo y generamos un resumen
+
+```{r}
+library(randomForest)
+modelo <- randomForest(default~., data=trainCredit)
+modelo
+```
+
+> Observamos la importancia de las variables
+
+```{r}
+modelo$importance
+```
+
+> Por último instalamos y cargamos la libreria caret para hacer
+> predicciones y generar una matriz de confusión
+
+```{r}
+if(!require(caret)){
+    install.packages('caret', repos='http://cran.us.r-project.org')
+    library(caret)
+}
+```
+
+```{r}
+library(caret)
+prediction <- predict(modelo, trainCredit)
+confusionMatrix(prediction, trainCredit$default)
+```
+
+> La precisión de los datos de entrenamiento es del 100%, lo que indica
+> que todos los valores han sido clasificados correctamente.
+>
+> ### Conclusión
+>
+> Tras haber generado los distintos modelos tanto estadisticos como
+> gráficos podemos concluir que se puede deducir en aproximadamente un
+> 90% a quien se le debe asignar un buen credito. Sin embargo, hay una
+> tasa de error de aprox. 65% a la hora de asignar a un cliente un
+> credito malo, ya que existen otros individuos con asignaciones
+> similares con un buen credito.
+>
+> Por lo tanto, tras observar los atributos y el porcentaje de good y
+> bad default existe un o unos atributos con un importancia mayor a
+> comparación del resto que condicionan el resultado.
+
+# Rúbrica
+
+------------------------------------------------------------------------
+
+-   (Obligatorio) Se debe realizar un breve informe (PDF, Html.... )
+    donde se respondan a las preguntas concretas, mostrando en primer
+    lugar el código utilizado, luego los resultados y posteriormente los
+    comentarios que se consideren pertinentes para cada apartado.\
+-   10% Hay un estudio sobre los datos de los que se parte, las
+    variables que componen los datos. Los datos son preparados
+    correctamente.
+-   10% Se realiza un análisis descriptivo univariante (o análisis de
+    relevancia) de algunas variables una vez se han tratado vs el target
+    a nivel gráfico, comentando las que aparentemente son más
+    interesantes. Análogamente se realiza un análisis de correlaciones.
+-   20% Se aplica un árbol de decisión de forma correcta y se obtiene
+    una estimación del error, mostrando gráficamente el árbol obtenido.
+    La visualización debe ser comprensible y adecuada al problema a
+    resolver.
+-   15% Se explican las reglas que se obtienen en términos concretos del
+    problema a resolver.
+-   15% Se usa el modelo para predecir con muestras no usadas en el
+    entrenamiento (holdout) y se obtiene una estimación del error. En
+    base a la matriz de confusión, se comentan los tipos de errores y se
+    valora de forma adecuada la capacidad predictiva del algoritmo.
+-   15% Se prueba otro modelo de árbol o variantes diferentes del C50 y
+    se comparan los resultados obtenidos, valorando si son mejores. Se
+    recomienda experimentar usando un Random Forest (librería de R
+    *randomForest*
+    (<https://cran.r-project.org/web/packages/randomForest/randomForest.pdf>)).
+-   10% Con los resultados obtenidos anteriormente, se presentan unas
+    conclusiones contextualizadas donde se expone un resumen de los
+    diferentes modelos utilizados (al menos 3) así como el conocimiento
+    adquirido tras el trabajo realizado y los descubrimientos más
+    importantes realizados en el conjunto de datos.
+-   5% Se presenta el código y es fácilmente reproducible.
